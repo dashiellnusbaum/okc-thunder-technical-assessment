@@ -1,0 +1,74 @@
+---
+title: "OKC_Thunder_Technical_Assessment"
+author: "Dashiell Nusbaum"
+date: "11/4/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Libraries
+```{r}
+library(tidyverse) # general manipulation
+```
+
+# Read in the data
+```{r}
+shots_data <- read_csv("../data/shots_data.csv")
+```
+
+# Transforming the data
+```{r}
+shots_data %>%
+  mutate(shot_zone = case_when(abs(x) > 22 & y <= 7.8 ~ "C3", # if the absolute value of x is greater than 22 and the y value is less than or equal to 7.8, then it's a corner 3
+                               y > 7.8 & sqrt(x^2 + y^2) > 23.75 ~ "NC3", # if y is greater than 7.8 and the distance from the hoop to the shot (using the pythagorean theorem) is greater than 23.75, then it is a non-corner 3
+                               (y > 7.8 & sqrt(x^2 + y^2) <= 23.75) | (y <= 7.8 & abs(x) <= 22) ~ "2PT" # if (y is greater than 7.8 and the distance is less than or equal to 23.75) OR (y is less than or equal to 7.8 and x is less than or equal to 22), then it's a 2 point shot. Could have also just said all other shots are two pointers (x == y ~ "2PT"), but wanted to make sure there weren't any weird cases I was missing
+                               )) ->
+  shots_data_with_zones
+```
+
+# Shot distribution
+```{r}
+shots_data_with_zones %>%
+  group_by(team, shot_zone) %>% # grouping by team and shot zone
+  summarize(count = n()) %>% # number of shots for each team in each zone
+  ungroup() %>% # ungroup so can...
+  group_by(team) %>% # ...group only by the team
+  mutate(prop_in_zone = count/sum(count, na.rm = TRUE)) %>% # proportion of team's shots that come within that zone
+  ungroup() %>% # ungroup
+  select(-count) %>% # no longer need the count variable
+  pivot_wider(names_from = shot_zone, values_from = prop_in_zone) -> # make the data in wide format
+  shot_dist
+
+shot_dist # raw number for percent (numeric)
+```
+
+# EFG%
+```{r}
+shots_data_with_zones %>%
+  group_by(team, shot_zone) %>% # grouping by team and shot zone
+  summarize(FGA = n(), # toal number of attempts
+            FGM = sum(fgmade, na.rm = TRUE)) %>% # total number of makes
+  ungroup() %>% # ungroup
+  mutate(eFG_pct_in_zone = case_when(str_detect(shot_zone, "3") ~ (FGM + (0.5*FGM))/FGA, # when there's a "3" somewhere in the shot_zone category name, since all shots are threes can just use tho whole formula for eFG% with FGM substitute in for 3PM
+                                     str_detect(shot_zone, "2") ~ (FGM/FGA))) %>% # if there's a "2" somewhere in the shot_zone category name, since all shots are twos don't need the 0.5*3PM part of the formula
+  select(-FGA, -FGM) %>% # get rid of the FGA and FGM variables, don't need anymore
+  pivot_wider(names_from = shot_zone, values_from = eFG_pct_in_zone) ->
+  shot_efg_pct
+
+shot_efg_pct
+```
+
+# writing to csv files
+```{r}
+write_csv(x = shot_dist, file = "../output/shot_dist.csv") # the proportion of shots in each zone
+write_csv(x = shot_efg_pct, file = "../output/shot_efg_pct.csv") # the shot eFG% in each zone
+```
+
+
+
+
+
+
