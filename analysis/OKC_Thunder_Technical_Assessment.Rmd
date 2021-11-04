@@ -55,7 +55,7 @@ shots_data_with_zones %>%
   mutate(eFG_pct_in_zone = case_when(str_detect(shot_zone, "3") ~ (FGM + (0.5*FGM))/FGA, # when there's a "3" somewhere in the shot_zone category name, since all shots are threes can just use tho whole formula for eFG% with FGM substitute in for 3PM
                                      str_detect(shot_zone, "2") ~ (FGM/FGA))) %>% # if there's a "2" somewhere in the shot_zone category name, since all shots are twos don't need the 0.5*3PM part of the formula
   select(-FGA, -FGM) %>% # get rid of the FGA and FGM variables, don't need anymore
-  pivot_wider(names_from = shot_zone, values_from = eFG_pct_in_zone) ->
+  pivot_wider(names_from = shot_zone, values_from = eFG_pct_in_zone) -> # make the data in wide format
   shot_efg_pct
 
 shot_efg_pct
@@ -66,9 +66,3 @@ shot_efg_pct
 write_csv(x = shot_dist, file = "../output/shot_dist.csv") # the proportion of shots in each zone
 write_csv(x = shot_efg_pct, file = "../output/shot_efg_pct.csv") # the shot eFG% in each zone
 ```
-
-
-
-
-
-
